@@ -30,7 +30,7 @@ jobs:
           python-version: 3.12
 
       - name: Setup Zephyr project
-        uses: zephyrproject-rtos/action-zephyr-setup@v1
+        uses: zephyrproject-rtos/action-zephyr-setup@700109a78599c7bb26585f2fb3d2411d65381b9d
         with:
           app-path: zeroprobe
           toolchains: arm-zephyr-eabi
@@ -42,6 +42,15 @@ jobs:
         shell: bash
         run: |
           west build
+
+              
+      - name: Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            zeroprobe/build/zephyr/zephyr.elf
+            zeroprobe/build/zephyr/zephyr.uf2
 #
 #      - name: Test firmware
 #        working-directory: zeroprobe
