@@ -1,0 +1,55 @@
+
+/ {
+	chosen {
+		zephyr,console = &cdc_acm_uart1;
+		zephyr,shell-uart = &cdc_acm_uart1;
+	};
+
+	uart-bridge0 {
+		compatible = "zephyr,uart-bridge";
+		peers = <&cdc_acm_uart0 &uart0>;
+	};
+
+	dp0 {
+		compatible = "zephyr,swdp-gpio";
+		status = "okay";
+		clk-gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+		dio-gpios = <&gpio0 11 GPIO_PULL_UP>;
+		port-write-cycles = <1>;
+	};
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+		label = "Zephyr USB CDC-ACM target";
+	};
+
+	cdc_acm_uart1: cdc_acm_uart1 {
+		compatible = "zephyr,cdc-acm-uart";
+		label = "Zephyr USB CDC-ACM console";
+	};
+};
+
+&pinctrl {
+	uart0_default: uart0_default {
+		group0 {
+			pinmux = <UART0_TX_P12>;
+		};
+
+		group1 {
+			pinmux = <UART0_RX_P13>;
+			input-enable;
+		};
+	};
+};
+
+&uart0 {
+	current-speed = <115200>;
+	pinctrl-names = "default";
+	status = "okay";
+	pinctrl-0 = <&uart0_default>;
+};
+&uart1 {
+	status = "disabled";
+};
