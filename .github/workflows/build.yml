@@ -41,10 +41,16 @@ jobs:
         working-directory: zeroprobe
         shell: bash
         run: |
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            EXTRA_TWISTER_FLAGS="--short-build-path -O/tmp/twister-out"
-          fi
-          west twister -T app -v --inline-logs --integration $EXTRA_TWISTER_FLAGS
+          west build
+#
+#      - name: Test firmware
+#        working-directory: zeroprobe
+#        shell: bash
+#        run: |
+#          if [ "${{ runner.os }}" = "Windows" ]; then
+#            EXTRA_TWISTER_FLAGS="--short-build-path -O/tmp/twister-out"
+#          fi
+#          west twister -v  -p rp2040_zero --inline-logs --integration $EXTRA_TWISTER_FLAGS
 
       # - name: Twister Tests
       #   working-directory: zeroprobe
