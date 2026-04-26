@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <sample_usbd.h>
+#include "usbd_impl.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
@@ -24,7 +24,7 @@ DAP_LINK_CONTEXT_DEFINE(sample_dap_ctx, DEVICE_DT_GET_ONE(zephyr_swdp_gpio));
 
 int main(void)
 {
-	struct usbd_context *sample_usbd;
+	struct usbd_context *usbd_device;
 	int ret;
 
 	ret = dap_link_init(&sample_dap_ctx);
@@ -39,31 +39,31 @@ int main(void)
 		return ret;
 	}
 
-	sample_usbd = sample_usbd_setup_device(NULL);
-	if (sample_usbd == NULL) {
+	usbd_device = usbd_setup_device(NULL);
+	if (usbd_device == NULL) {
 		LOG_ERR("Failed to setup USB device");
 		return -ENODEV;
 	}
 
-	ret = usbd_add_descriptor(sample_usbd, &bos_vreq_msosv2);
+	ret = usbd_add_descriptor(usbd_device, &bos_vreq_msosv2);
 	if (ret) {
 		LOG_ERR("Failed to add MSOSv2 capability descriptor");
 		return ret;
 	}
 
-	ret = usbd_add_descriptor(sample_usbd, &bos_vreq_webusb);
+	ret = usbd_add_descriptor(usbd_device, &bos_vreq_webusb);
 	if (ret) {
 		LOG_ERR("Failed to add WebUSB capability descriptor");
 		return ret;
 	}
 
-	ret = usbd_init(sample_usbd);
+	ret = usbd_init(usbd_device);
 	if (ret) {
 		LOG_ERR("Failed to initialize device support");
 		return ret;
 	}
 
-	ret = usbd_enable(sample_usbd);
+	ret = usbd_enable(usbd_device);
 	if (ret) {
 		LOG_ERR("Failed to enable device support");
 		return ret;
