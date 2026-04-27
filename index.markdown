@@ -11,12 +11,13 @@ title: Zeroprobe
 Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
 
 
-| Zero PIN | Debugger Function | Notes | Pico PIN | Target Function |
-|----------|-------------------|-------|----------|-----------------|
-| 10       | CLK               |       | CLK      | SWCLK           |
-| 11       | DIO               |       | DIO      | SWDIO           |
-| 12       | UART0 TX          | [^1]  | 1        | UART0 RX        |
-| 13       | UART0 RX          | [^1]  | 0        | UART0 TX        |
+| Zero Pin | Debugger Function |<->| Pico Pin | Target Function | Notes |
+|----------|-------------------|---|----------|-----------------|-------|
+| 9        | N/A               |   |          |                 |       |
+| 10       | SWCLK             |   | CLK      | SWCLK           |       |
+| 11       | SWDIO             |   | DIO      | SWDIO           |       |
+| 12       | UART0 TX          |   | 1        | UART RX         | [^1]  |
+| 13       | UART0 RX          |   | 0        | UART TX         | [^1]  |
 
 ![](assets/images/view_bb.png)
 
@@ -46,23 +47,61 @@ Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
 
     - Check the device with: `pyocd list`
 
-    - A device will appear
+    ```bash
+    $ pyocd list               
+    #   Probe/Board                          Unique ID          Target  
+    ----------------------------------------------------------------------
+    0   Zephyr Project Zeroprobe CMSIS-DAP   xxxxxxxxxxxxxxxx   n/a    
+    ```
 
 ## SWD/DAP
 
-// todo 
+This should be automatically detected by your SDK if it uses openOCD or pyOCD.
 
 ## TTY
 
-// todo
+On Linux this will expose two serial ports: one reporting the logs of the debugger, and one forwarding the target UART.
+
+Assuming you don't have anything else connected and that you have [tio](https://github.com/tio/tio) installed:
+
+
+```bash
+$ ls /dev
+# this will show all the devices connected, we are interested in:
+# ttyACM0 = UART bridge
+# ttyACM1 = zeroprobe logs
+$ tio /dev/ttyACM0
+```
 
 # Fixes
 
-// todo
+In case of device not detected:
+
+- Check with lsusb:
+    ```bash
+    $ lsusb -d 2fe3:                                                 
+    Bus 005 Device 005: ID 2fe3:2ef0 NordicSemiconductor Zeroprobe CMSIS-DAP
+    ```
+- Add the udev rules for OpenOCD
+
+    - `sudo nano /etc/dev/rules.d/60-openocd.rules`
+
+    - Copy the content of [this file](https://github.com/openocd-org/openocd/blob/master/contrib/60-openocd.rules)
+
+    - `sudo udevadm control --reload`
+
 
 ## TODO
 
 - Use the addressable RGB LED to display information
+
+# Build
+
+Requisites:
+
+- Zephyr SDK 1.0.1
+
+- Zephyr 4.4
 
 # Credits
 
@@ -73,5 +112,7 @@ Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
 - Images created with [Fritzing](https://fritzing.org/)
 
 - Boards footprint created by Vanepp: [RP2040-Zero](https://forum.fritzing.org/t/part-request-waveshare-rp2040-zero/16705/2) & [RPi Pico](https://forum.fritzing.org/t/looking-for-raspberry-pi-pico-part/11915/19) 
+
+- Favicon from "Noto Emoji Font"
 
 # Footnotes
