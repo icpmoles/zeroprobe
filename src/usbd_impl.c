@@ -30,13 +30,13 @@ static const char *const blocklist[] = {
  */
 USBD_DEVICE_DEFINE(sample_usbd,
 		   DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)),
-		   CONFIG_SAMPLE_USBD_VID, CONFIG_SAMPLE_USBD_PID);
+		   CONFIG_APP_USBD_VID, CONFIG_APP_USBD_PID);
 /* doc device instantiation end */
 
 /* doc string instantiation start */
 USBD_DESC_LANG_DEFINE(sample_lang);
-USBD_DESC_MANUFACTURER_DEFINE(sample_mfr, CONFIG_SAMPLE_USBD_MANUFACTURER);
-USBD_DESC_PRODUCT_DEFINE(sample_product, CONFIG_SAMPLE_USBD_PRODUCT);
+USBD_DESC_MANUFACTURER_DEFINE(sample_mfr, CONFIG_APP_USBD_MANUFACTURER);
+USBD_DESC_PRODUCT_DEFINE(sample_product, CONFIG_APP_USBD_PRODUCT);
 IF_ENABLED(CONFIG_HWINFO, (USBD_DESC_SERIAL_NUMBER_DEFINE(sample_sn)));
 
 /* doc string instantiation end */
@@ -45,23 +45,23 @@ USBD_DESC_CONFIG_DEFINE(fs_cfg_desc, "FS Configuration");
 USBD_DESC_CONFIG_DEFINE(hs_cfg_desc, "HS Configuration");
 
 /* doc configuration instantiation start */
-static const uint8_t attributes = (IS_ENABLED(CONFIG_SAMPLE_USBD_SELF_POWERED) ?
+static const uint8_t attributes = (IS_ENABLED(CONFIG_APP_USBD_SELF_POWERED) ?
 				   USB_SCD_SELF_POWERED : 0) |
-				  (IS_ENABLED(CONFIG_SAMPLE_USBD_REMOTE_WAKEUP) ?
+				  (IS_ENABLED(CONFIG_APP_USBD_REMOTE_WAKEUP) ?
 				   USB_SCD_REMOTE_WAKEUP : 0);
 
 /* Full speed configuration */
 USBD_CONFIGURATION_DEFINE(sample_fs_config,
 			  attributes,
-			  CONFIG_SAMPLE_USBD_MAX_POWER, &fs_cfg_desc);
+			  CONFIG_APP_USBD_MAX_POWER, &fs_cfg_desc);
 
 /* High speed configuration */
 USBD_CONFIGURATION_DEFINE(sample_hs_config,
 			  attributes,
-			  CONFIG_SAMPLE_USBD_MAX_POWER, &hs_cfg_desc);
+			  CONFIG_APP_USBD_MAX_POWER, &hs_cfg_desc);
 /* doc configuration instantiation end */
 
-#if CONFIG_SAMPLE_USBD_20_EXTENSION_DESC
+#if CONFIG_APP_USBD_20_EXTENSION_DESC
 /*
  * This does not yet provide valuable information, but rather serves as an
  * example, and will be improved in the future.
@@ -179,7 +179,7 @@ struct usbd_context *usbd_setup_device(usbd_msg_cb_t msg_cb)
 		/* doc device init-and-msg end */
 	}
 
-#if CONFIG_SAMPLE_USBD_20_EXTENSION_DESC
+#if CONFIG_APP_USBD_20_EXTENSION_DESC
 	(void)usbd_device_set_bcd_usb(&sample_usbd, USBD_SPEED_FS, 0x0201);
 	(void)usbd_device_set_bcd_usb(&sample_usbd, USBD_SPEED_HS, 0x0201);
 
