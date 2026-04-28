@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/../external/bootloader/mcuboot" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../external/modules/hal/cmsis_6" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../external/modules/hal/rpi_pico" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/../external/modules/lib/picolibc" vcs="Git" />
