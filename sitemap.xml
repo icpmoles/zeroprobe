@@ -6,7 +6,7 @@ layout: null
   {% for page in site.pages %}
   {% if page.url contains '.xml' %}{% else %}
       <url>
-        <loc>{{ site.url }}{{ page.url }}</loc>
+        <loc>{{ page.url | absolute_url }}</loc>
         <changefreq>monthly</changefreq>
         <priority>1.0</priority>
        </url>
@@ -14,7 +14,7 @@ layout: null
   {% endfor %}
   {% for page in site.posts %}
       <url>
-        <loc>{{ site.url }}{{ page.url | replace: 'index.html', '' }}</loc>
+        <loc>{{ page.url | absolute_url | replace: 'index.html', '' }}</loc>
         <changefreq>monthly</changefreq>
         <priority>1.0</priority>
        </url>
