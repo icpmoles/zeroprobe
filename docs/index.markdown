@@ -80,9 +80,11 @@ Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
     Test: Speed 3000, Word size 32bit, Data length 32768 bytes, Number of iterations 5
     Results: Read: 25305.23 bytes/s Std Dev 66.51, Write: 24417.86 bytes/s Std Dev 156.50
     ```
+
+
 ## SWD/DAP
 
-This should be automatically detected by your SDK if it uses openOCD or pyOCD.
+This should be automatically detected by your SDK if it uses openOCD/pyOCD/probe-rs.
 
 ## TTY
 
@@ -98,6 +100,32 @@ $ ls /dev
 # ttyACM1 = zeroprobe logs
 $ tio /dev/ttyACM0
 ```
+
+## LED Colors
+
+The RGB LED on the RP2040-Zero shows the state of the USB connection:
+
+| Color  | Meaning                                                                 |
+|--------|-------------------------------------------------------------------------|
+| Off    | No power, the firmware is not running, or the board is in BOOT mode     |
+| Red    | Powered and running, but not configured by a USB host                   |
+| Blue   | Configured by the host and ready, no USB traffic                        |
+| Green  | USB traffic in the last 0.5 s, on the debugger or on a serial port      |
+
+- **Red** is shown at boot and after a USB reset. If it stays red while
+  connected to a computer, the host did not set up the device: check that
+  the cable supports data (not charge-only) and see [Fixes](#fixes).
+
+- **Blue** means the probe is ready to use.
+
+- **Green** turns on whenever the host and the probe exchange data: a debugger
+  session (pyOCD, OpenOCD, probe-rs), or data on one of the two
+  [serial ports](#tty). It returns to blue after 0.5 s without traffic, so it
+  flickers between green and blue with intermittent traffic and stays green
+  while a debugger is polling. The debugger on the host generates traffic
+  with the probe even with no target attached.
+
+The colors and the timeout can be changed, see [Configure](#configure).
 
 # Fixes
 
