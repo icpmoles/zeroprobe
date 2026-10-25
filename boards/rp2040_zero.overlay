@@ -73,6 +73,20 @@
 	label = "i2c0";
 };
 
+/* Take the last flash sector from the code partition for persistent data */
+&code_partition {
+	reg = <0x100 (DT_SIZE_M(2) - 0x100 - DT_SIZE_K(4))>;
+};
+
+&flash0 {
+	partitions {
+		storage_partition: partition@1ff000 {
+			label = "storage";
+			reg = <0x1ff000 DT_SIZE_K(4)>;
+		};
+	};
+};
+
 &i2c1 {
 	status = "disabled";
 };

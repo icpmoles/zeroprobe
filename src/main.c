@@ -1,10 +1,12 @@
 /*
  * Copyright (c) 2023 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Iacopo Moles
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "usbd_impl.h"
+#include "status_led.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
@@ -13,7 +15,6 @@
 #include <zephyr/usb/bos.h>
 #include <zephyr/usb/msos_desc.h>
 #include <zephyr/dap/dap_link.h>
-#include <zephyr/drivers/led_strip.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(dap_sample, LOG_LEVEL_INF);
@@ -22,55 +23,6 @@ LOG_MODULE_REGISTER(dap_sample, LOG_LEVEL_INF);
 #include "msosv2.h"
 
 DAP_LINK_CONTEXT_DEFINE(sample_dap_ctx, DEVICE_DT_GET_ONE(zephyr_swdp_gpio));
-
-/* Convert a 0xRRGGBB Kconfig value to a struct led_rgb initializer */
-#define LED_RGB(hex) { .r = ((hex) >> 16) & 0xff, .g = ((hex) >> 8) & 0xff, .b = (hex) & 0xff }
-
-static const struct device *const led_strip = DEVICE_DT_GET(DT_ALIAS(led_strip));
-static const struct led_rgb led_unconfigured = LED_RGB(CONFIG_APP_LED_COLOR_UNCONFIGURED);
-static const struct led_rgb led_configured = LED_RGB(CONFIG_APP_LED_COLOR_CONFIGURED);
-static const struct led_rgb led_active = LED_RGB(CONFIG_APP_LED_COLOR_ACTIVE);
-
-/* Updated from main, the USB stack thread, and the USB message work item */
-static K_MUTEX_DEFINE(led_lock);
-static const struct led_rgb *led_color;
-
-static void led_set_color(const struct led_rgb *color)
-{
-	/* The driver may use the pixel buffer as scratch space */
-	struct led_rgb pixel = *color;
-	int ret;
-
-	k_mutex_lock(&led_lock, K_FOREVER);
-
-	/* Skip redundant updates, this is called for every USB transfer */
-	if (color != led_color) {
-		ret = led_strip_update_rgb(led_strip, &pixel, 1);
-		if (ret) {
-			LOG_ERR("Failed to update LED strip, %d", ret);
-		} else {
-			led_color = color;
-		}
-	}
-
-	k_mutex_unlock(&led_lock);
-}
-
-static void led_idle_handler(struct k_work *work)
-{
-	ARG_UNUSED(work);
-
-	/* Fall back from active to configured, unless the device was reset
-	 * or unconfigured in the meantime
-	 */
-	k_mutex_lock(&led_lock, K_FOREVER);
-	if (led_color == &led_active) {
-		led_set_color(&led_configured);
-	}
-	k_mutex_unlock(&led_lock);
-}
-
-static K_WORK_DELAYABLE_DEFINE(led_idle_work, led_idle_handler);
 
 /*
  * The USB device stack has no traffic notification, so intercept the
@@ -86,8 +38,7 @@ int __wrap_usbd_class_handle_xfer(struct usbd_context *const uds_ctx,
 				  const int err)
 {
 	if (err == 0) {
-		led_set_color(&led_active);
-		k_work_reschedule(&led_idle_work, K_MSEC(CONFIG_APP_LED_IDLE_TIMEOUT_MS));
+		status_led_activity();
 	}
 
 	return __real_usbd_class_handle_xfer(uds_ctx, buf, err);
@@ -99,17 +50,17 @@ static void sample_msg_cb(struct usbd_context *const ctx, const struct usbd_msg 
 
 	/*
 	 * Unconfigured, configured by the host, or active on traffic within the
-	 * last CONFIG_APP_LED_IDLE_TIMEOUT_MS, colors are set in Kconfig.
+	 * idle timeout, colors and timeout are set from the 'led' shell command.
 	 * Other messages, e.g. CDC ACM line state, leave the LED unchanged.
 	 */
 	switch (msg->type) {
 	case USBD_MSG_RESET:
 	case USBD_MSG_VBUS_REMOVED:
-		led_set_color(&led_unconfigured);
+		status_led_set(STATUS_LED_UNCONFIGURED);
 		break;
 	case USBD_MSG_CONFIGURATION:
 		/* Status is the configuration value, 0 means unconfigured */
-		led_set_color(msg->status ? &led_configured : &led_unconfigured);
+		status_led_set(msg->status ? STATUS_LED_CONFIGURED : STATUS_LED_UNCONFIGURED);
 		break;
 	default:
 		break;
@@ -135,12 +86,10 @@ int main(void)
 	struct usbd_context *usbd_device;
 	int ret;
 
-	if (!device_is_ready(led_strip)) {
-		LOG_ERR("LED strip device %s is not ready", led_strip->name);
-		return -ENODEV;
+	ret = status_led_init();
+	if (ret) {
+		return ret;
 	}
-
-	led_set_color(&led_unconfigured);
 
 	ret = dap_link_init(&sample_dap_ctx);
 	if (ret) {

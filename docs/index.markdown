@@ -226,6 +226,31 @@ The status LED is set in `boards/rp2040_zero.conf`:
 
 Colors are `0xRRGGBB`, keep the values low: the WS2812 is very bright.
 
+The colors and the timeout can also be changed at runtime from the shell on
+the logs serial port (see [TTY](#tty)), without rebuilding:
+
+```
+uart:~$ led show
+unconfigured 0x200000
+configured   0x000020 (current)
+active       0x002000
+timeout      500 ms
+uart:~$ led set configured 0x100010
+uart:~$ led timeout 1000
+uart:~$ led save
+```
+
+| Command                                                  | Effect                                                 |
+|----------------------------------------------------------|--------------------------------------------------------|
+| `led show`                                               | Show the settings, and which color is currently shown  |
+| `led set <unconfigured\|configured\|active> <RRGGBB>`    | Change a color until the next reboot                   |
+| `led timeout [ms]`                                       | Show or change the idle timeout (1 to 60000 ms)        |
+| `led save`                                               | Save the settings to flash, they are loaded at boot    |
+| `led reset`                                              | Erase the saved settings and go back to the defaults   |
+
+Saved settings are kept in the last 4 KB sector of the flash, which is not
+touched when flashing a new UF2 firmware.
+
 # Credits
 
 - [Zephyr RTOS](https://www.zephyrproject.org/)
