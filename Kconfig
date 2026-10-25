@@ -57,5 +57,41 @@ config APP_USBD_20_EXTENSION_DESC
 
 endmenu
 
+menu "Zeroprobe status LED"
+
+config APP_LED_COLOR_UNCONFIGURED
+	hex "LED color when not configured by a USB host"
+	default 0x200000
+	range 0x000000 0xffffff
+	help
+	  Status LED color as 0xRRGGBB, shown at boot, after a USB bus reset,
+	  or when the host deconfigures the device.
+
+config APP_LED_COLOR_CONFIGURED
+	hex "LED color when configured by a USB host"
+	default 0x000020
+	range 0x000000 0xffffff
+	help
+	  Status LED color as 0xRRGGBB, shown when the host has configured the
+	  device and there is no USB traffic.
+
+config APP_LED_COLOR_ACTIVE
+	hex "LED color on USB traffic"
+	default 0x002000
+	range 0x000000 0xffffff
+	help
+	  Status LED color as 0xRRGGBB, shown while there is USB traffic on
+	  any non-control endpoint.
+
+config APP_LED_IDLE_TIMEOUT_MS
+	int "USB traffic idle timeout in milliseconds"
+	default 500
+	range 1 60000
+	help
+	  Time without USB traffic before the status LED falls back from the
+	  active color to the configured color.
+
+endmenu
+
 
 source "Kconfig.zephyr"

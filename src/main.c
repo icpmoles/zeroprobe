@@ -23,12 +23,13 @@ LOG_MODULE_REGISTER(dap_sample, LOG_LEVEL_INF);
 
 DAP_LINK_CONTEXT_DEFINE(sample_dap_ctx, DEVICE_DT_GET_ONE(zephyr_swdp_gpio));
 
-#define LED_BRIGHTNESS 0x20
+/* Convert a 0xRRGGBB Kconfig value to a struct led_rgb initializer */
+#define LED_RGB(hex) { .r = ((hex) >> 16) & 0xff, .g = ((hex) >> 8) & 0xff, .b = (hex) & 0xff }
 
 static const struct device *const led_strip = DEVICE_DT_GET(DT_ALIAS(led_strip));
-static const struct led_rgb led_red = { .r = LED_BRIGHTNESS };
-static const struct led_rgb led_green = { .g = LED_BRIGHTNESS };
-static const struct led_rgb led_blue = { .b = LED_BRIGHTNESS };
+static const struct led_rgb led_unconfigured = LED_RGB(CONFIG_APP_LED_COLOR_UNCONFIGURED);
+static const struct led_rgb led_configured = LED_RGB(CONFIG_APP_LED_COLOR_CONFIGURED);
+static const struct led_rgb led_active = LED_RGB(CONFIG_APP_LED_COLOR_ACTIVE);
 
 /* Updated from main, the USB stack thread, and the USB message work item */
 static K_MUTEX_DEFINE(led_lock);
@@ -55,6 +56,22 @@ static void led_set_color(const struct led_rgb *color)
 	k_mutex_unlock(&led_lock);
 }
 
+static void led_idle_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	/* Fall back from active to configured, unless the device was reset
+	 * or unconfigured in the meantime
+	 */
+	k_mutex_lock(&led_lock, K_FOREVER);
+	if (led_color == &led_active) {
+		led_set_color(&led_configured);
+	}
+	k_mutex_unlock(&led_lock);
+}
+
+static K_WORK_DELAYABLE_DEFINE(led_idle_work, led_idle_handler);
+
 /*
  * The USB device stack has no traffic notification, so intercept the
  * dispatch of completed non-control endpoint transfers to class instances.
@@ -69,7 +86,8 @@ int __wrap_usbd_class_handle_xfer(struct usbd_context *const uds_ctx,
 				  const int err)
 {
 	if (err == 0) {
-		led_set_color(&led_green);
+		led_set_color(&led_active);
+		k_work_reschedule(&led_idle_work, K_MSEC(CONFIG_APP_LED_IDLE_TIMEOUT_MS));
 	}
 
 	return __real_usbd_class_handle_xfer(uds_ctx, buf, err);
@@ -80,17 +98,18 @@ static void sample_msg_cb(struct usbd_context *const ctx, const struct usbd_msg 
 	// LOG_INF("USBD message: %s", usbd_msg_type_string(msg->type));
 
 	/*
-	 * Red: not configured, blue: configured by the host, green: traffic.
+	 * Unconfigured, configured by the host, or active on traffic within the
+	 * last CONFIG_APP_LED_IDLE_TIMEOUT_MS, colors are set in Kconfig.
 	 * Other messages, e.g. CDC ACM line state, leave the LED unchanged.
 	 */
 	switch (msg->type) {
 	case USBD_MSG_RESET:
 	case USBD_MSG_VBUS_REMOVED:
-		led_set_color(&led_red);
+		led_set_color(&led_unconfigured);
 		break;
 	case USBD_MSG_CONFIGURATION:
 		/* Status is the configuration value, 0 means unconfigured */
-		led_set_color(msg->status ? &led_blue : &led_red);
+		led_set_color(msg->status ? &led_configured : &led_unconfigured);
 		break;
 	default:
 		break;
@@ -121,7 +140,7 @@ int main(void)
 		return -ENODEV;
 	}
 
-	led_set_color(&led_red);
+	led_set_color(&led_unconfigured);
 
 	ret = dap_link_init(&sample_dap_ctx);
 	if (ret) {
