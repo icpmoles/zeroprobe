@@ -101,6 +101,13 @@ $ ls /dev
 $ tio /dev/ttyACM0
 ```
 
+The target UART can also be read from the browser with the
+[Zeroprobe Terminal](terminal.html) (Chrome, Edge or other Chromium based
+browsers). In the port chooser pick the first of the two Zeroprobe ports.
+
+The baud rate chosen in the terminal, or in `tio -b <baud>`, is applied to the
+target UART (115200 by default).
+
 ## LED Colors
 
 The RGB LED on the RP2040-Zero shows the state of the USB connection:

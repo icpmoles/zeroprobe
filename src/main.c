@@ -15,6 +15,7 @@
 #include <zephyr/usb/bos.h>
 #include <zephyr/usb/msos_desc.h>
 #include <zephyr/dap/dap_link.h>
+#include <zephyr/drivers/uart/uart_bridge.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(dap_sample, LOG_LEVEL_INF);
@@ -23,6 +24,9 @@ LOG_MODULE_REGISTER(dap_sample, LOG_LEVEL_INF);
 #include "msosv2.h"
 
 DAP_LINK_CONTEXT_DEFINE(sample_dap_ctx, DEVICE_DT_GET_ONE(zephyr_swdp_gpio));
+
+/* Bridges the target CDC ACM port and the target UART */
+static const struct device *const uart_bridge = DEVICE_DT_GET_ONE(zephyr_uart_bridge);
 
 /*
  * The USB device stack has no traffic notification, so intercept the
@@ -78,6 +82,16 @@ static void sample_msg_cb(struct usbd_context *const ctx, const struct usbd_msg 
 				LOG_ERR("Failed to disable device support");
 			}
 		}
+	}
+
+	/*
+	 * Apply the baud rate and framing chosen on the host to the target UART,
+	 * the bridge does not do it on its own. Ports that are not part of the
+	 * bridge, e.g. the console, are skipped.
+	 */
+	if (msg->type == USBD_MSG_CDC_ACM_LINE_CODING ||
+	    msg->type == USBD_MSG_CDC_ACM_CONTROL_LINE_STATE) {
+		uart_bridge_settings_update(msg->dev, uart_bridge);
 	}
 }
 

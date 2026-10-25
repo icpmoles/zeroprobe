@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zeroprobe Terminal</title>
+<meta name="description" content="Read the target UART of a Zeroprobe from the browser, using the Web Serial API.">
+<link rel="shortcut icon" type="image/x-icon" href="assets/images/favicon.ico">
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --text: #1d2330;
+    --muted: #5d6677;
+    --border: #d9dde5;
+    --accent: #1e6bd6;
+    --accent-text: #ffffff;
+    --term-bg: #0f141c;
+    --term-text: #d7e0ea;
+    --ok: #1f8a4c;
+    --warn: #b26a00;
+    --err: #c62f2f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #11151c;
+      --panel: #181e27;
+      --text: #e3e8ef;
+      --muted: #96a1b2;
+      --border: #2b3441;
+      --accent: #4c8df0;
+      --accent-text: #0b0f15;
+      --term-bg: #0a0d12;
+      --term-text: #d7e0ea;
+      --ok: #3fbf72;
+      --warn: #e0a03a;
+      --err: #ef6464;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #11151c;
+    --panel: #181e27;
+    --text: #e3e8ef;
+    --muted: #96a1b2;
+    --border: #2b3441;
+    --accent: #4c8df0;
+    --accent-text: #0b0f15;
+    --term-bg: #0a0d12;
+    --term-text: #d7e0ea;
+    --ok: #3fbf72;
+    --warn: #e0a03a;
+    --err: #ef6464;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+  header, .toolbar, .sendbar, .notice {
+    padding: 10px 16px;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header a { color: var(--accent); font-size: 14px; }
+  .status { margin-left: auto; font-size: 14px; color: var(--muted); }
+  .status::before {
+    content: "";
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: var(--muted);
+    vertical-align: 1px;
+  }
+  .status.connected { color: var(--ok); }
+  .status.connected::before { background: var(--ok); }
+  .status.error { color: var(--err); }
+  .status.error::before { background: var(--err); }
+
+  .notice {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .notice.warn { color: var(--warn); }
+  .notice code { font-size: 13px; }
+
+  .toolbar, .sendbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    background: var(--panel);
+  }
+  .toolbar { border-bottom: 1px solid var(--border); }
+  .sendbar { border-top: 1px solid var(--border); }
+  .spacer { flex: 1; }
+
+  button, select, input[type="text"] {
+    font: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-height: 34px;
+  }
+  button { cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled, select:disabled, input:disabled { opacity: 0.5; cursor: default; }
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 600;
+  }
+  label { font-size: 14px; color: var(--muted); display: inline-flex; gap: 6px; align-items: center; }
+  input[type="text"] { flex: 1; min-width: 0; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+
+  #output {
+    flex: 1;
+    min-height: 200px;
+    margin: 0;
+    padding: 12px 16px;
+    overflow: auto;
+    background: var(--term-bg);
+    color: var(--term-text);
+    font: 13px/1.4 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  #output .ts { color: #7f8ea3; }
+  #output .sys { color: #7f8ea3; font-style: italic; }
+
+  @media (max-width: 600px) {
+    .status { margin-left: 0; width: 100%; }
+    .sendbar select { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Zeroprobe Terminal</h1>
+  <a href="./">Documentation</a>
+  <span id="status" class="status">Disconnected</span>
+</header>
+
+<div id="support" class="notice">
+  Opens the <strong>target UART</strong> of a Zeroprobe in the browser. In the
+  port chooser pick the first of the two Zeroprobe ports (usually
+  <code>ttyACM0</code> on Linux): the second one is the probe's own shell.
+</div>
+
+<div class="toolbar">
+  <button id="connect" class="primary">Connect</button>
+  <label>Baud
+    <select id="baud">
+      <option>9600</option>
+      <option>19200</option>
+      <option>38400</option>
+      <option>57600</option>
+      <option selected>115200</option>
+      <option>230400</option>
+      <option>460800</option>
+      <option>921600</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="timestamps"> Timestamps</label>
+  <label><input type="checkbox" id="autoscroll" checked> Auto-scroll</label>
+  <span class="spacer"></span>
+  <button id="clear">Clear</button>
+  <button id="save">Save log</button>
+</div>
+
+<pre id="output" aria-live="polite"></pre>
+
+<form id="sendbar" class="sendbar">
+  <input type="text" id="input" placeholder="Send to target" autocomplete="off" disabled>
+  <select id="eol" aria-label="Line ending" disabled>
+    <option value="">No line ending</option>
+    <option value="\n" selected>LF</option>
+    <option value="\r">CR</option>
+    <option value="\r\n">CR+LF</option>
+  </select>
+  <button id="send" type="submit" disabled>Send</button>
+</form>
+
+<script>
+(() => {
+  // Zephyr Project VID and the Zeroprobe PID, see prj.conf
+  const FILTERS = [{ usbVendorId: 0x2fe3, usbProductId: 0x2ef0 }];
+  // Keep the page responsive with chatty targets
+  const MAX_CHARS = 500000;
+  // Colors and cursor movement from the target are not rendered
+  const ANSI_ESCAPE = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-_]/g;
+
+  const $ = (id) => document.getElementById(id);
+  const output = $("output");
+  const status = $("status");
+  const connectBtn = $("connect");
+  const baudSel = $("baud");
+  const tsBox = $("timestamps");
+  const scrollBox = $("autoscroll");
+  const input = $("input");
+  const eolSel = $("eol");
+  const sendBtn = $("send");
+
+  let port = null;
+  let reader = null;
+  let reading = false;
+  let atLineStart = true;
+  let logText = "";
+  let charCount = 0;
+
+  const store = {
+    get(key) { try { return localStorage.getItem("zeroprobe-terminal-" + key); } catch { return null; } },
+    set(key, value) { try { localStorage.setItem("zeroprobe-terminal-" + key, value); } catch { /* ignore */ } },
+  };
+
+  for (const [el, key, prop] of [[baudSel, "baud", "value"], [eolSel, "eol", "value"], [tsBox, "ts", "checked"]]) {
+    const saved = store.get(key);
+    if (saved !== null) {
+      el[prop] = prop === "checked" ? saved === "1" : saved;
+    }
+    el.addEventListener("change", () => store.set(key, prop === "checked" ? (el.checked ? "1" : "0") : el.value));
+  }
+
+  function setStatus(text, kind) {
+    status.textContent = text;
+    status.className = "status" + (kind ? " " + kind : "");
+  }
+
+  function setConnected(connected) {
+    connectBtn.textContent = connected ? "Disconnect" : "Connect";
+    connectBtn.classList.toggle("primary", !connected);
+    input.disabled = eolSel.disabled = sendBtn.disabled = !connected;
+    if (connected) {
+      input.focus();
+    }
+  }
+
+  function timestamp() {
+    const d = new Date();
+    return d.toTimeString().slice(0, 8) + "." + String(d.getMilliseconds()).padStart(3, "0");
+  }
+
+  function trim() {
+    while (charCount > MAX_CHARS && output.firstChild) {
+      charCount -= output.firstChild.textContent.length;
+      output.removeChild(output.firstChild);
+    }
+    if (logText.length > MAX_CHARS) {
+      logText = logText.slice(logText.length - MAX_CHARS);
+    }
+  }
+
+  function append(text, cls) {
+    const nearBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 40;
+    const frag = document.createDocumentFragment();
+
+    if (cls) {
+      if (!atLineStart) {
+        text = "\n" + text;
+      }
+      const span = document.createElement("span");
+      span.className = cls;
+      span.textContent = text + "\n";
+      frag.appendChild(span);
+      charCount += span.textContent.length;
+      atLineStart = true;
+    } else {
+      text = text.replace(ANSI_ESCAPE, "").replace(/\r\n?/g, "\n");
+      logText += text;
+      for (const part of text.split(/(\n)/)) {
+        if (part === "") {
+          continue;
+        }
+        if (atLineStart && part !== "\n" && tsBox.checked) {
+          const ts = document.createElement("span");
+          ts.className = "ts";
+          ts.textContent = "[" + timestamp() + "] ";
+          frag.appendChild(ts);
+          charCount += ts.textContent.length;
+        }
+        frag.appendChild(document.createTextNode(part));
+        charCount += part.length;
+        atLineStart = part === "\n";
+      }
+    }
+
+    output.appendChild(frag);
+    trim();
+    if (scrollBox.checked && nearBottom) {
+      output.scrollTop = output.scrollHeight;
+    }
+  }
+
+  async function readLoop() {
+    const decoder = new TextDecoder();
+    reading = true;
+    while (reading && port && port.readable) {
+      reader = port.readable.getReader();
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+          append(decoder.decode(value, { stream: true }));
+        }
+      } catch (err) {
+        // Framing or parity errors are recoverable, a lost device is not
+        if (reading) {
+          append("Read error: " + err.message, "sys");
+        }
+      } finally {
+        reader.releaseLock();
+        reader = null;
+      }
+    }
+  }
+
+  async function open(selected) {
+    const baudRate = Number(baudSel.value);
+    try {
+      await selected.open({ baudRate });
+    } catch (err) {
+      setStatus("Failed to open port", "error");
+      append("Failed to open port: " + err.message, "sys");
+      return;
+    }
+    port = selected;
+    setConnected(true);
+    setStatus("Connected, " + baudRate + " baud", "connected");
+    append("Connected at " + baudRate + " baud", "sys");
+    readLoop();
+  }
+
+  async function close() {
+    reading = false;
+    if (reader) {
+      try { await reader.cancel(); } catch { /* already gone */ }
+    }
+    if (port) {
+      try { await port.close(); } catch { /* already gone */ }
+    }
+    port = null;
+    setConnected(false);
+    setStatus("Disconnected");
+  }
+
+  connectBtn.addEventListener("click", async () => {
+    if (port) {
+      await close();
+      append("Disconnected", "sys");
+      return;
+    }
+    let selected;
+    try {
+      selected = await navigator.serial.requestPort({ filters: FILTERS });
+    } catch {
+      // The user closed the chooser
+      return;
+    }
+    await open(selected);
+  });
+
+  baudSel.addEventListener("change", async () => {
+    if (!port) {
+      return;
+    }
+    // Reopening sends the new line coding, the probe applies it to the target UART
+    const current = port;
+    await close();
+    await open(current);
+  });
+
+  $("sendbar").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!port || !port.writable) {
+      return;
+    }
+    const data = new TextEncoder().encode(input.value + eolSel.value);
+    const writer = port.writable.getWriter();
+    try {
+      await writer.write(data);
+      input.value = "";
+    } catch (err) {
+      append("Write error: " + err.message, "sys");
+    } finally {
+      writer.releaseLock();
+    }
+  });
+
+  $("clear").addEventListener("click", () => {
+    output.textContent = "";
+    logText = "";
+    charCount = 0;
+    atLineStart = true;
+  });
+
+  $("save").addEventListener("click", () => {
+    const blob = new Blob([logText], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "zeroprobe-" + new Date().toISOString().replace(/[:.]/g, "-") + ".log";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  if (!("serial" in navigator)) {
+    const notice = $("support");
+    notice.classList.add("warn");
+    notice.innerHTML = "This browser does not support the Web Serial API. Use Chrome, Edge or " +
+      "another Chromium based browser, over HTTPS. Alternatively use <code>tio /dev/ttyACM0</code>.";
+    connectBtn.disabled = baudSel.disabled = true;
+    return;
+  }
+
+  navigator.serial.addEventListener("disconnect", (event) => {
+    if (event.target === port) {
+      append("Device unplugged", "sys");
+      close();
+    }
+  });
+})();
+</script>
+</body>
+</html>
