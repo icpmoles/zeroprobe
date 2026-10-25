@@ -12,6 +12,4 @@ manifest:
         path-prefix: external
         name-allowlist:
           - cmsis_6
-          - picolibc
           - hal_rpi_pico
-          - cmsis-dsp
