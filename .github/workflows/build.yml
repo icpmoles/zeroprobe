@@ -2,6 +2,10 @@ name: Build
 
 on:
   push:
+    # Skip pushes that only change the documentation site.
+    # Path filters are not evaluated for tag pushes, so releases always build.
+    paths-ignore:
+      - "docs/**"
   # pull_request:
   schedule:
     - cron: "5 4 * * 0"
@@ -61,21 +65,3 @@ jobs:
         if: github.ref_type == 'tag'
         with:
           files: ${{ env.FIRMWARE_LIST }}
-#
-#      - name: Test firmware
-#        working-directory: zeroprobe
-#        shell: bash
-#        run: |
-#          if [ "${{ runner.os }}" = "Windows" ]; then
-#            EXTRA_TWISTER_FLAGS="--short-build-path -O/tmp/twister-out"
-#          fi
-#          west twister -v  -p rp2040_zero --inline-logs --integration $EXTRA_TWISTER_FLAGS
-
-      # - name: Twister Tests
-      #   working-directory: zeroprobe
-      #   shell: bash
-      #   run: |
-      #     if [ "${{ runner.os }}" = "Windows" ]; then
-      #       EXTRA_TWISTER_FLAGS="--short-build-path -O/tmp/twister-out"
-      #     fi
-      #     west twister -T tests -v --inline-logs --integration $EXTRA_TWISTER_FLAGS
