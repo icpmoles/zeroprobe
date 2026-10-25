@@ -1,9 +1,97 @@
-# Copyright (c) 2023 Nordic Semiconductor ASA
+# Copyright (c) 2026 Iacopo Moles
 # SPDX-License-Identifier: Apache-2.0
 
-# Source common USB sample options used to initialize new experimental USB
-# device stack. The scope of these options is limited to USB samples in project
-# tree, you cannot use them in your own application.
-source "samples/subsys/usb/common/Kconfig.sample_usbd"
+menu "Zeroprobe options"
+	depends on USB_DEVICE_STACK_NEXT
+
+config APP_USBD_MANUFACTURER
+	string "USB device sample manufacturer string"
+	default "Zephyr Project"
+	help
+	  USB device sample manufacturer string.
+
+config APP_USBD_PRODUCT
+	string "USB device sample product string"
+	default "Zeroprobe"
+	help
+	  USB device sample product stringa.
+
+config APP_USBD_VID
+	hex "USB device sample Vendor ID"
+	default 0x2fe3
+	help
+	  USB device sample Vendor ID. The default id (0x2fe3) is associated to
+	  Zephyr Project, you must use your own VID for samples and applications
+	  outside of Zephyr Project.
+
+config APP_USBD_PID
+	hex "USB device sample Product ID"
+	default 0x2ef0
+	help
+	  USB device sample Product ID. You must use your own PID for samples
+	  and applications outside of Zephyr Project.
+
+config APP_USBD_SELF_POWERED
+	bool "USB device sample Self-powered attribute"
+	default n
+	help
+	  Set the Self-powered attribute in the sample configuration.
+
+config APP_USBD_REMOTE_WAKEUP
+	bool "USB device sample Remote Wakeup attribute"
+	help
+	  Set the Remote Wakeup attribute in the sample configuration.
+
+config APP_USBD_MAX_POWER
+	int "USB device sample bMaxPower value"
+	default 125
+	range 0 250
+	help
+	  bMaxPower value in the sample configuration in 2 mA units.
+
+config APP_USBD_20_EXTENSION_DESC
+	bool "Use default USB 2.0 Extension Descriptor"
+	depends on USBD_BOS_SUPPORT
+	help
+	  Set bcdUSB value to 0201 and use default USB 2.0 Extension Descriptor.
+
+endmenu
+
+menu "Zeroprobe status LED"
+
+config APP_LED_COLOR_UNCONFIGURED
+	hex "LED color when not configured by a USB host"
+	default 0x200000
+	range 0x000000 0xffffff
+	help
+	  Status LED color as 0xRRGGBB, shown at boot, after a USB bus reset,
+	  or when the host deconfigures the device.
+
+config APP_LED_COLOR_CONFIGURED
+	hex "LED color when configured by a USB host"
+	default 0x000020
+	range 0x000000 0xffffff
+	help
+	  Status LED color as 0xRRGGBB, shown when the host has configured the
+	  device and there is no USB traffic.
+
+config APP_LED_COLOR_ACTIVE
+	hex "LED color on USB traffic"
+	default 0x002000
+	range 0x000000 0xffffff
+	help
+	  Status LED color as 0xRRGGBB, shown while there is USB traffic on
+	  any non-control endpoint.
+
+config APP_LED_IDLE_TIMEOUT_MS
+	int "USB traffic idle timeout in milliseconds"
+	default 500
+	range 1 60000
+	help
+	  Time without USB traffic before the status LED falls back from the
+	  active color to the configured color.
+
+endmenu
+
 
 source "Kconfig.zephyr"

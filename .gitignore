@@ -14,3 +14,8 @@ __pycache__/
 
 # docs
 /doc/_build*
+/_site/
+
+# zephyr 
+external
+.west

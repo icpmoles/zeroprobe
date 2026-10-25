@@ -3,9 +3,13 @@ name: Build
 on:
   push:
   # pull_request:
-  # schedule:
-  #   - cron: "0 0 * * *"
+  schedule:
+    - cron: "5 4 * * 0"
 
+env:
+  FIRMWARE_LIST: |
+              zeroprobe/build/zephyr/zephyr.elf
+              zeroprobe/build/zephyr/zephyr.uf2
 permissions:
   contents: read
 
@@ -45,14 +49,18 @@ jobs:
         run: |
           west build
 
+      - name: Share Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-artifacts-${{ matrix.os }}-${{ github.event_name }}.${{ github.sha }}
+          path: ${{ env.FIRMWARE_LIST }}
+          retention-days: 10
               
       - name: Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         if: github.ref_type == 'tag'
         with:
-          files: |
-            zeroprobe/build/zephyr/zephyr.elf
-            zeroprobe/build/zephyr/zephyr.uf2
+          files: ${{ env.FIRMWARE_LIST }}
 #
 #      - name: Test firmware
 #        working-directory: zeroprobe
