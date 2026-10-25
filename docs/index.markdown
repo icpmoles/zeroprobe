@@ -19,7 +19,7 @@ Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
 | 12       | UART0 TX          |   | 1        | UART RX         | [^1]  |
 | 13       | UART0 RX          |   | 0        | UART TX         | [^1]  |
 
-![](assets/images/view_bb.png)
+![Schematics for wiring](assets/images/view_bb.png)
 
 [^1]: Target pins depends on the setup of your target board
 
@@ -54,6 +54,32 @@ Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
     0   Zephyr Project Zeroprobe CMSIS-DAP   xxxxxxxxxxxxxxxx   n/a    
     ```
 
+- **[OPTIONAL]** Test with `probe-rs`
+
+    ```bash
+    $ probe-rs list
+    The following debug probes were found:
+    [0]: Zeroprobe CMSIS-DAP -- 2fe3:2ef0-4:xxxxxxxxxxxxxxxx (CMSIS-DAP)
+
+    $ probe-rs benchmark --chip RP2040 --address 0x20000000
+
+    Probe: Probe type CMSIS-DAP V2 IF: 4 DESC: Some(InterfaceAltSetting { interface_number: 4, alternate_setting: 0, num_endpoints: 2, class: 255, subclass: 0,protocol: 0, string_index: Some(7), endpoints: [Endpoint { address: 0x03, direction: Out, transfer_type: Bulk, max_packet_size: 64, packets_per_microframe:1, interval: 0 }, Endpoint { address: 0x85, direction: In, transfer_type: Bulk, max_packet_size: 64, packets_per_microframe: 1, interval: 0 }] }), debug interface not specified, target chip RP2040
+
+    Test: Speed 3000, Word size 32bit, Data length 4 bytes, Number of iterations 5
+    Results: Read: 3779.65 bytes/s Std Dev 281.00, Write: 802960.41 bytes/s Std Dev 702031.03
+
+    Test: Speed 3000, Word size 32bit, Data length 32 bytes, Number of iterations 5
+    Results: Read: 13977.55 bytes/s Std Dev 2158.35, Write: 14192.47 bytes/s Std Dev 680.97
+
+    Test: Speed 3000, Word size 32bit, Data length 128 bytes, Number of iterations 5
+    Results: Read: 21714.88 bytes/s Std Dev 98.92, Write: 21079.25 bytes/s Std Dev 180.72
+
+    Test: Speed 3000, Word size 32bit, Data length 2048 bytes, Number of iterations 5
+    Results: Read: 24615.24 bytes/s Std Dev 170.70, Write: 24802.63 bytes/s Std Dev 119.16
+
+    Test: Speed 3000, Word size 32bit, Data length 32768 bytes, Number of iterations 5
+    Results: Read: 25305.23 bytes/s Std Dev 66.51, Write: 24417.86 bytes/s Std Dev 156.50
+    ```
 ## SWD/DAP
 
 This should be automatically detected by your SDK if it uses openOCD or pyOCD.
