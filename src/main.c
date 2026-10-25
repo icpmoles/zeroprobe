@@ -30,23 +30,71 @@ static const struct led_rgb led_red = { .r = LED_BRIGHTNESS };
 static const struct led_rgb led_green = { .g = LED_BRIGHTNESS };
 static const struct led_rgb led_blue = { .b = LED_BRIGHTNESS };
 
+/* Updated from main, the USB stack thread, and the USB message work item */
+static K_MUTEX_DEFINE(led_lock);
+static const struct led_rgb *led_color;
+
 static void led_set_color(const struct led_rgb *color)
 {
 	/* The driver may use the pixel buffer as scratch space */
 	struct led_rgb pixel = *color;
 	int ret;
 
-	ret = led_strip_update_rgb(led_strip, &pixel, 1);
-	if (ret) {
-		LOG_ERR("Failed to update LED strip, %d", ret);
+	k_mutex_lock(&led_lock, K_FOREVER);
+
+	/* Skip redundant updates, this is called for every USB transfer */
+	if (color != led_color) {
+		ret = led_strip_update_rgb(led_strip, &pixel, 1);
+		if (ret) {
+			LOG_ERR("Failed to update LED strip, %d", ret);
+		} else {
+			led_color = color;
+		}
 	}
+
+	k_mutex_unlock(&led_lock);
+}
+
+/*
+ * The USB device stack has no traffic notification, so intercept the
+ * dispatch of completed non-control endpoint transfers to class instances.
+ * Wrapped with -Wl,--wrap=usbd_class_handle_xfer, see CMakeLists.txt.
+ */
+int __real_usbd_class_handle_xfer(struct usbd_context *const uds_ctx,
+				  struct net_buf *const buf,
+				  const int err);
+
+int __wrap_usbd_class_handle_xfer(struct usbd_context *const uds_ctx,
+				  struct net_buf *const buf,
+				  const int err)
+{
+	if (err == 0) {
+		led_set_color(&led_green);
+	}
+
+	return __real_usbd_class_handle_xfer(uds_ctx, buf, err);
 }
 
 static void sample_msg_cb(struct usbd_context *const ctx, const struct usbd_msg *msg)
 {
-	LOG_INF("USBD message: %s", usbd_msg_type_string(msg->type));
+	// LOG_INF("USBD message: %s", usbd_msg_type_string(msg->type));
 
-	led_set_color(&led_blue);
+	/*
+	 * Red: not configured, blue: configured by the host, green: traffic.
+	 * Other messages, e.g. CDC ACM line state, leave the LED unchanged.
+	 */
+	switch (msg->type) {
+	case USBD_MSG_RESET:
+	case USBD_MSG_VBUS_REMOVED:
+		led_set_color(&led_red);
+		break;
+	case USBD_MSG_CONFIGURATION:
+		/* Status is the configuration value, 0 means unconfigured */
+		led_set_color(msg->status ? &led_blue : &led_red);
+		break;
+	default:
+		break;
+	}
 
 	if (usbd_can_detect_vbus(ctx)) {
 		if (msg->type == USBD_MSG_VBUS_READY) {

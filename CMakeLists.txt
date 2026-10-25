@@ -10,3 +10,5 @@ project(dap)
 include_directories(include)
 FILE(GLOB app_sources src/*.c)
 target_sources(app PRIVATE ${app_sources})
+# Hook USB transfer completions to drive the activity LED
+target_link_options(app PUBLIC -Wl,--wrap=usbd_class_handle_xfer)
