@@ -2,6 +2,7 @@
 .vscode
 *.swp
 *~
+.clangd
 
 # python
 .venv
