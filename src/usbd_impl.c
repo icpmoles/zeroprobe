@@ -1,6 +1,3 @@
-//
-// Created by icpmoles on 4/26/26.
-//
 /*
  * Copyright (c) 2023 Nordic Semiconductor ASA
  *
