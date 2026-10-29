@@ -14,8 +14,15 @@ env:
   FIRMWARE_LIST: |
               zeroprobe/build/zephyr/zephyr.elf
               zeroprobe/build/zephyr/zephyr.uf2
+
 permissions:
   contents: read
+  pull-requests: write
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -31,6 +38,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           path: zeroprobe
           persist-credentials: false
 
@@ -65,3 +73,23 @@ jobs:
         if: github.ref_type == 'tag'
         with:
           files: ${{ env.FIRMWARE_LIST }}
+
+      - name: Analyze memory
+        id: analyze
+        continue-on-error: true
+        uses: membrowse/membrowse-action@1c76611a52b08b316352dbe51c3209b23262b01a
+        with:
+          elf:          zeroprobe/build/zephyr/zephyr.elf
+          ld:           zeroprobe/build/zephyr/linker.cmd
+          map_file:     zeroprobe/build/zephyr/zephyr.map
+          # if it's a tagged release calls it "production", "development" otherwise
+          target_name:  ${{ startsWith(github.ref, 'refs/tags/') && 'production' || 'development' }}
+          api_key:      ${{ secrets.MEMBROWSE_API_KEY }}
+
+      - name: Post PR comment
+        if: ${{ steps.analyze.outcome == 'success' && github.event_name == 'pull_request' }}
+        uses: membrowse/membrowse-action/comment-action@1c76611a52b08b316352dbe51c3209b23262b01a
+        with:
+          json_files: ${{ steps.analyze.outputs.report_path }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
