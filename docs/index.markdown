@@ -276,6 +276,7 @@ uart:~$ qdec_sim step -1
 | Command                             | Effect                                                         |
 |-------------------------------------|----------------------------------------------------------------|
 | `qdec_sim start <steps/s> [steps]`  | Generate steps, negative rate goes backwards, stop after `steps` if given |
+| `qdec_sim sweep <min> <max> <ms>`   | Triangular speed profile, `min → max → min` steps/s every `ms` (10 to 3600000), rates are signed |
 | `qdec_sim stop`                     | Stop, the pins keep their level                                |
 | `qdec_sim step [steps]`             | Move right away by `steps` (default 1), negative goes backwards |
 | `qdec_sim status`                   | Show the phases, position and rate                             |
@@ -283,6 +284,12 @@ uart:~$ qdec_sim step -1
 
 The rate is rounded to whole kernel ticks (10 kHz), so the maximum is
 10000 steps/s and the rate actually used is printed by `start`.
+
+`sweep` changes the speed linearly from `min` to `max` in the first half of
+the period and back to `min` in the second half, until `qdec_sim stop`. The
+rates are signed, so `qdec_sim sweep -500 500 2000` swings back and forth,
+changing direction as the speed passes through zero. While sweeping the
+timer fires every kernel tick (100 µs), so edges land on that grid.
 
 # Credits
 
