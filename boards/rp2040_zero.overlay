@@ -10,6 +10,12 @@
 		peers = <&cdc_acm_uart0 &uart0>;
 	};
 
+	zephyr,user {
+		/* qdec_sim shell command, phase A and phase B */
+		qdec-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>,
+			     <&gpio0 7 GPIO_ACTIVE_HIGH>;
+	};
+
 	dp0 {
 		compatible = "zephyr,swdp-gpio";
 		status = "okay";

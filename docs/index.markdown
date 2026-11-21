@@ -13,6 +13,8 @@ Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
 
 | Zero Pin | Debugger Function |<->| Pico Pin | Target Function | Notes |
 |----------|-------------------|---|----------|-----------------|-------|
+| 6        | QDEC sim A        |   |          | Encoder A input | [^2]  |
+| 7        | QDEC sim B        |   |          | Encoder B input | [^2]  |
 | 9        | N/A               |   |          |                 |       |
 | 10       | SWCLK             |   | CLK      | SWCLK           |       |
 | 11       | SWDIO             |   | DIO      | SWDIO           |       |
@@ -22,6 +24,7 @@ Check the [RPi Pico Pinout Labels](https://pico.pinout.xyz/)
 ![Schematics for wiring](assets/images/view_bb.png)
 
 [^1]: Target pins depends on the setup of your target board
+[^2]: Only used by the `qdec_sim` shell command, see [Quadrature Encoder Simulator](#quadrature-encoder-simulator)
 
 # How to use
 
@@ -250,6 +253,36 @@ uart:~$ led save
 
 Saved settings are kept in the last 4 KB sector of the flash, which is not
 touched when flashing a new UF2 firmware.
+
+## Quadrature Encoder Simulator
+
+The `qdec_sim` shell command simulates an incremental (quadrature) encoder,
+to test a QDEC peripheral or driver on the target. Phase A is on GPIO 6 and
+phase B on GPIO 7, both 3.3 V push-pull outputs. The pins stay inputs until
+the first `qdec_sim` command.
+
+Each step moves one state along `00 → 10 → 11 → 01` (A, B), forward means A
+leads B. A decoder in x4 mode counts one per step, four steps are one cycle.
+
+```
+uart:~$ qdec_sim start 400
+Running forward at 400 steps/s (100 cycles/s), until 'qdec_sim stop'
+uart:~$ qdec_sim stop
+Stopped at position 1734
+uart:~$ qdec_sim start -1000 4000
+uart:~$ qdec_sim step -1
+```
+
+| Command                             | Effect                                                         |
+|-------------------------------------|----------------------------------------------------------------|
+| `qdec_sim start <steps/s> [steps]`  | Generate steps, negative rate goes backwards, stop after `steps` if given |
+| `qdec_sim stop`                     | Stop, the pins keep their level                                |
+| `qdec_sim step [steps]`             | Move right away by `steps` (default 1), negative goes backwards |
+| `qdec_sim status`                   | Show the phases, position and rate                             |
+| `qdec_sim reset`                    | Set the position counter to 0                                  |
+
+The rate is rounded to whole kernel ticks (10 kHz), so the maximum is
+10000 steps/s and the rate actually used is printed by `start`.
 
 # Credits
 
