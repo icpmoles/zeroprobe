@@ -78,6 +78,12 @@ jobs:
         id: analyze
         continue-on-error: true
         uses: membrowse/membrowse-action@1c76611a52b08b316352dbe51c3209b23262b01a
+        # The checkout lives under zeroprobe/, but action steps run from the
+        # workspace root. Point git at the checkout so MemBrowse reads the
+        # commit message and author from it.
+        env:
+          GIT_DIR:       zeroprobe/.git
+          GIT_WORK_TREE: zeroprobe
         with:
           elf:          zeroprobe/build/zephyr/zephyr.elf
           ld:           zeroprobe/build/zephyr/linker.cmd
